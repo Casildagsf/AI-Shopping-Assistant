@@ -1,4 +1,10 @@
-# Amazon AI Shopping Assistant
+# 🛒 Amazon AI Shopping Assistant
+
+An AI-powered shopping assistant that recommends Amazon devices using Machine Learning and Large Language Models.
+
+Built with **FastAPI**, **Transformers**, and **FLAN-T5**, the assistant combines structured analytics with Generative AI to help users choose the best product based on thousands of customer reviews.
+
+> Developed as the deployment phase of the Ironhack AI Engineering Bootcamp.
 
 ## Project Overview
 
