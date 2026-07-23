@@ -12,3 +12,10 @@ __pycache__/
 .env
 .venv/
 venv/
+
+test_router.py
+test_assistant.py 
+test_generator.py 
+test_model.py
+test_prompt.py
+test.py
