@@ -5,8 +5,8 @@ numpy>=1.26
 pandas>=2.3
 scikit-learn>=1.7
 
-torch==2.2.2
-transformers==4.41.2
+torch
+transformers
 sentencepiece
 safetensors
 huggingface-hub
