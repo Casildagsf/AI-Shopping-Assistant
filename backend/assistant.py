@@ -1,4 +1,4 @@
-from backend.utils import clean_product_name
+from backend.utils import clean_product_name, clean_review_summary
 """
 Main AI Shopping Assistant.
 """
@@ -11,6 +11,7 @@ from backend.retrieval import (
 from backend.intent_router import identify_category
 from backend.prompt_builder import build_prompt
 from backend.generator import generate_answer
+from backend.answer_builder import finalize_answer
 from backend.models import load_model
 
 
@@ -58,19 +59,32 @@ def answer_question(question):
         for product in category_data["all_products"]
     ]
 
+    summary = clean_review_summary(category_data.get("summary"))
+
     prompt = build_prompt(
         question=question,
         recommended_product=recommended_product,
         category=category,
         rating=category_data["rating"],
-        reviews=category_data["reviews"]
+        reviews=category_data["reviews"],
+        summary=summary,
     )
 
-    answer = generate_answer(
+    raw_answer = generate_answer(
         prompt,
         tokenizer,
         model,
         device
+    )
+
+    answer = finalize_answer(
+        raw_answer,
+        question=question,
+        product=recommended_product,
+        category=category,
+        rating=category_data["rating"],
+        reviews=category_data["reviews"],
+        summary=summary,
     )
 
     return {

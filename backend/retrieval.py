@@ -78,9 +78,15 @@ def get_category_data(
         for _, row in top.iterrows()
     ]
 
+    summary_rows = summaries.loc[
+        summaries["cluster_name"] == category, "summary"
+    ]
+    raw_summary = summary_rows.iloc[0] if len(summary_rows) else ""
+
     return {
         "recommended_product": best_product["name"],
         "rating": best_product["mean_rating"],
         "reviews": int(best_product["n_reviews"]),
         "all_products": all_products,
+        "summary": raw_summary,
     }

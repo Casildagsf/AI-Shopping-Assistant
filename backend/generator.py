@@ -31,7 +31,13 @@ def generate_answer(
 
         outputs = model.generate(
             **inputs,
-            max_new_tokens=150
+            max_new_tokens=160,
+            min_new_tokens=30,
+            num_beams=4,
+            no_repeat_ngram_size=3,
+            repetition_penalty=1.4,
+            length_penalty=1.0,
+            early_stopping=True,
         )
 
     answer = tokenizer.decode(

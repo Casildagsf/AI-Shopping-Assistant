@@ -1,4 +1,4 @@
-# App dependencies (edit this line to force a clean rebuild on Streamlit Cloud)
+# App dependencies (bump this comment to force a clean rebuild on Streamlit Cloud) — flan-t5-base
 streamlit>=1.36
 
 fastapi==0.139.2

@@ -8,36 +8,37 @@ def build_prompt(
     recommended_product,
     category,
     rating,
-    reviews
+    reviews,
+    summary=None,
 ):
     """
-    Build a prompt for FLAN-T5.
+    Build an instruction-style prompt for FLAN-T5.
+
+    The model is asked to answer the customer's actual question using the
+    facts we have (recommended product, rating, review count and, when it is
+    readable, a short summary of what reviewers say).
     """
 
-    prompt = f"""
-You are an Amazon Shopping Assistant.
+    facts = [
+        f"- Recommended product: {recommended_product}",
+        f"- Category: {category}",
+        f"- Average customer rating: {rating:.2f} out of 5",
+        f"- Based on {reviews} customer reviews",
+    ]
 
-A customer asked:
+    if summary:
+        facts.append(f"- What reviewers say: {summary}")
 
-{question}
+    facts_block = "\n".join(facts)
 
-You have already selected the best product.
-
-Recommended product:
-{recommended_product}
-
-Category:
-{category}
-
-Average customer rating:
-{rating:.2f}/5
-
-Number of customer reviews:
-{reviews}
-
-Explain in 2 or 3 sentences why this product is a good recommendation.
-
-Answer:
-"""
+    prompt = (
+        "You are a helpful Amazon shopping assistant. "
+        "Answer the customer's question in 2 or 3 complete sentences, "
+        "using the product information below. Recommend the product and "
+        "explain why it is a good choice. Do not just repeat the product name.\n\n"
+        f"Customer question: {question}\n\n"
+        f"Product information:\n{facts_block}\n\n"
+        "Helpful answer:"
+    )
 
     return prompt

@@ -28,4 +28,4 @@ SUMMARIES_PATH = DATA_DIR / "category_summaries.csv"
 # Model
 # ==========================================================
 
-MODEL_NAME = "google/flan-t5-small"
+MODEL_NAME = "google/flan-t5-base"
