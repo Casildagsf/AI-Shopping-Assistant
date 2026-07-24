@@ -49,6 +49,15 @@ def answer_question(question):
         category_data["recommended_product"]
     )
 
+    all_products = [
+        {
+            "name": clean_product_name(product["name"]),
+            "rating": product["rating"],
+            "reviews": product["reviews"],
+        }
+        for product in category_data["all_products"]
+    ]
+
     prompt = build_prompt(
         question=question,
         recommended_product=recommended_product,
@@ -69,5 +78,6 @@ def answer_question(question):
         "recommended_product": recommended_product,
         "rating": category_data["rating"],
         "reviews": category_data["reviews"],
+        "all_products": all_products,
         "llm_explanation": answer
     }

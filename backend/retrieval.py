@@ -69,8 +69,18 @@ def get_category_data(
 
     best_product = top.iloc[0]
 
+    all_products = [
+        {
+            "name": row["name"],
+            "rating": float(row["mean_rating"]),
+            "reviews": int(row["n_reviews"]),
+        }
+        for _, row in top.iterrows()
+    ]
+
     return {
         "recommended_product": best_product["name"],
         "rating": best_product["mean_rating"],
-        "reviews": int(best_product["n_reviews"])
+        "reviews": int(best_product["n_reviews"]),
+        "all_products": all_products,
     }

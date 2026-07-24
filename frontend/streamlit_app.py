@@ -9,6 +9,7 @@ Hugging Face Spaces.
 import sys
 from pathlib import Path
 
+import pandas as pd
 import streamlit as st
 
 # Make sure the repo root is importable when Streamlit runs this file
@@ -67,15 +68,46 @@ if ask and question.strip():
     if result.get("category") is None:
         st.warning(result["answer"])
     else:
-        st.success(f"**Recommended product:** {result['recommended_product']}")
+        st.caption(f"📂 Category: **{result['category']}**")
 
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Category", result["category"])
-        col2.metric("Avg. rating", f"{result['rating']:.2f} / 5")
-        col3.metric("Reviews", f"{result['reviews']:,}")
+        st.success(f"⭐ **Top pick:** {result['recommended_product']}")
+
+        col1, col2 = st.columns(2)
+        col1.metric("Average rating", f"{result['rating']:.2f} / 5")
+        col2.metric("Customer reviews", f"{result['reviews']:,}")
 
         st.subheader("Why this product")
         st.write(result["llm_explanation"])
+
+        options = result.get("all_products", [])
+        if len(options) > 1:
+            st.subheader(f"All options in {result['category']}")
+            st.caption("Ranked by average customer rating.")
+
+            table = pd.DataFrame(options).rename(
+                columns={
+                    "name": "Product",
+                    "rating": "Rating",
+                    "reviews": "Reviews",
+                }
+            )
+
+            st.dataframe(
+                table,
+                hide_index=True,
+                use_container_width=True,
+                column_config={
+                    "Product": st.column_config.TextColumn(
+                        "Product", width="large"
+                    ),
+                    "Rating": st.column_config.NumberColumn(
+                        "Rating", format="%.2f ⭐"
+                    ),
+                    "Reviews": st.column_config.NumberColumn(
+                        "Reviews", format="%d"
+                    ),
+                },
+            )
 
 elif ask:
     st.info("Please type a question first.")
