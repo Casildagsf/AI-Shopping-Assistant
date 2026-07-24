@@ -1,3 +1,4 @@
+# App dependencies (edit this line to force a clean rebuild on Streamlit Cloud)
 streamlit>=1.36
 
 fastapi==0.139.2
