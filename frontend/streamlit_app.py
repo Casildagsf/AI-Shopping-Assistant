@@ -76,13 +76,13 @@ if ask and question.strip():
         col1.metric("Average rating", f"{result['rating']:.2f} / 5")
         col2.metric("Customer reviews", f"{result['reviews']:,}")
 
-        st.subheader("Why this product")
+        st.subheader("Why other customers liked this product")
         st.write(result["llm_explanation"])
 
         options = result.get("all_products", [])
         if len(options) > 1:
             st.subheader(f"All options in {result['category']}")
-            st.caption("Ranked by average customer rating.")
+            st.caption("Ranked by rating and how many customers reviewed it.")
 
             table = pd.DataFrame(options).rename(
                 columns={

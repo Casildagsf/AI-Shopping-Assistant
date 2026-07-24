@@ -1,4 +1,4 @@
-# App dependencies (bump this comment to force a clean rebuild on Streamlit Cloud) — flan-t5-base
+# App dependencies (bump this comment to force a clean rebuild on Streamlit Cloud) — weighted ranking
 streamlit>=1.36
 
 fastapi==0.139.2
