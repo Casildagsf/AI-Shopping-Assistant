@@ -16,13 +16,9 @@ DATA_DIR = BASE_DIR / "data"
 # Data Files
 # ==========================================================
 
-PRODUCTS_PATH = DATA_DIR / "product_clusters.csv"
-
-TOP_PRODUCTS_PATH = DATA_DIR / "top_products.csv"
-
-LOWEST_PRODUCTS_PATH = DATA_DIR / "lowest_products.csv"
-
-SUMMARIES_PATH = DATA_DIR / "category_summaries.csv"
+# Rich per-product evidence (ranking, pros/cons themes, sentiment and real
+# customer quotes) produced by the Amazon Review NLP pipeline (Project 3).
+EVIDENCE_PACK_PATH = DATA_DIR / "evidence_pack.json"
 
 # ==========================================================
 # Model

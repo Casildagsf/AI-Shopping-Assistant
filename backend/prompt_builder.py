@@ -9,35 +9,42 @@ def build_prompt(
     category,
     rating,
     reviews,
-    summary=None,
+    loved_themes=None,
+    recommend_rate=None,
+    pct_positive=None,
+    quote=None,
 ):
     """
-    Build an instruction-style prompt for FLAN-T5.
-
-    The model is asked to answer the customer's actual question using the
-    facts we have (recommended product, rating, review count and, when it is
-    readable, a short summary of what reviewers say).
+    Build an instruction-style prompt grounded in real review evidence so the
+    model answers the customer's actual question instead of parroting facts.
     """
 
     facts = [
         f"- Recommended product: {recommended_product}",
         f"- Category: {category}",
-        f"- Average customer rating: {rating:.2f} out of 5",
-        f"- Based on {reviews} customer reviews",
+        f"- Average rating: {rating:.2f} out of 5 from {reviews} reviews",
     ]
 
-    if summary:
-        facts.append(f"- What reviewers say: {summary}")
+    if recommend_rate:
+        facts.append(f"- {recommend_rate:.0f}% of reviewers recommend it")
+    elif pct_positive:
+        facts.append(f"- {pct_positive:.0f}% of reviews are positive")
+
+    if loved_themes:
+        facts.append("- What customers love: " + ", ".join(loved_themes))
+
+    if quote and quote.get("text"):
+        facts.append(f'- A real customer review: "{quote["text"]}"')
 
     facts_block = "\n".join(facts)
 
     prompt = (
-        "You are a helpful Amazon shopping assistant. "
-        "Answer the customer's question in 2 or 3 complete sentences, "
-        "using the product information below. Recommend the product and "
-        "explain why it is a good choice. Do not just repeat the product name.\n\n"
+        "You are a helpful Amazon shopping assistant. Using the review evidence "
+        "below, answer the customer's question in 2 or 3 complete sentences. "
+        "Recommend the product and explain, in your own words, why customers "
+        "like it. Do not just repeat the product name or the facts.\n\n"
         f"Customer question: {question}\n\n"
-        f"Product information:\n{facts_block}\n\n"
+        f"Review evidence:\n{facts_block}\n\n"
         "Helpful answer:"
     )
 

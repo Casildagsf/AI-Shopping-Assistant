@@ -72,12 +72,49 @@ if ask and question.strip():
 
         st.success(f"⭐ **Top pick:** {result['recommended_product']}")
 
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
         col1.metric("Average rating", f"{result['rating']:.2f} / 5")
         col2.metric("Customer reviews", f"{result['reviews']:,}")
 
+        if result.get("recommend_rate"):
+            col3.metric("Would recommend", f"{result['recommend_rate']:.0f}%")
+        elif result.get("pct_positive"):
+            col3.metric("Positive reviews", f"{result['pct_positive']:.0f}%")
+
         st.subheader("Why other customers liked this product")
         st.write(result["llm_explanation"])
+
+        loved = result.get("loved_themes") or []
+        complaints = result.get("complaint_themes") or []
+        if loved or complaints:
+            good_col, bad_col = st.columns(2)
+            with good_col:
+                st.markdown("**👍 What customers love**")
+                st.markdown(
+                    "\n".join(f"- {t}" for t in loved) or "_No data_"
+                )
+            with bad_col:
+                st.markdown("**👎 Common complaints**")
+                st.markdown(
+                    "\n".join(f"- {t}" for t in complaints) or "_No data_"
+                )
+
+        quote = result.get("quote")
+        if quote and quote.get("text"):
+            stars = "⭐" * int(round(quote.get("rating") or 0))
+            helpful = quote.get("helpful") or 0
+            st.markdown("**💬 In a customer's own words**")
+            st.info(f"“{quote['text']}”")
+            caption = " · ".join(
+                part
+                for part in [
+                    stars,
+                    f"{helpful} people found this helpful" if helpful else "",
+                ]
+                if part
+            )
+            if caption:
+                st.caption(caption)
 
         options = result.get("all_products", [])
         if len(options) > 1:
@@ -89,6 +126,7 @@ if ask and question.strip():
                     "name": "Product",
                     "rating": "Rating",
                     "reviews": "Reviews",
+                    "pct_positive": "Positive",
                 }
             )
 
@@ -105,6 +143,9 @@ if ask and question.strip():
                     ),
                     "Reviews": st.column_config.NumberColumn(
                         "Reviews", format="%d"
+                    ),
+                    "Positive": st.column_config.NumberColumn(
+                        "Positive", format="%.0f%%"
                     ),
                 },
             )

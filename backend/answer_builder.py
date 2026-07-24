@@ -1,40 +1,18 @@
 """
 Post-process the language model output.
 
-FLAN-T5 (base) is small and free, so on questions where we have no readable
-review summary it tends to parrot the product facts back instead of writing a
-real recommendation. We detect those low-quality generations and fall back to a
-sensible answer composed directly from the structured data, so the user always
-gets a real, coherent recommendation.
+FLAN-T5 (base) is small and free, so it sometimes parrots the product facts
+back instead of writing a real recommendation. We detect those low-quality
+generations and fall back to an answer composed directly from the real review
+evidence (recommend rate, sentiment, loved themes and a genuine customer
+quote), so the user always gets a real, coherent recommendation.
 """
-
-
-# Generic, honest talking points per category, used only when we have no
-# readable review summary to ground the answer.
-CATEGORY_BENEFITS = {
-    "Fire Tablets": (
-        "it is a versatile, budget-friendly tablet that customers like for "
-        "browsing, streaming video and reading"
-    ),
-    "Kindle E-Readers": (
-        "it is built for comfortable long reading sessions with a glare-free, "
-        "easy-on-the-eyes display and long battery life"
-    ),
-    "Echo, Fire TV & Smart Home": (
-        "it is a popular choice for hands-free Alexa control, music and "
-        "streaming your favourite shows"
-    ),
-    "Accessories & Cables": (
-        "it is a reliable, well-reviewed accessory that does its job without fuss"
-    ),
-}
 
 
 def _is_low_quality(answer, question, product=""):
     """
     Return True if the generated answer looks like a parrot of the input
-    (copied facts, echoed question, or just the product name) rather than a
-    real recommendation.
+    (copied facts, echoed question, or just the product name).
     """
 
     text = (answer or "").strip()
@@ -43,96 +21,109 @@ def _is_low_quality(answer, question, product=""):
     if len(text) < 25:
         return True
 
-    # Just the product name with almost nothing else around it.
     prod = product.strip().lower()
     if prod:
         remainder = low.replace(prod, "").strip(" .,-")
         if len(remainder) < 15:
             return True
 
-    # Copied straight from the facts block.
     fact_markers = [
         "category:",
-        "customer rating",
-        "based on ",
-        "out of 5 -",
-        "average customer",
+        "average rating",
+        "out of 5",
+        "% of reviewers",
+        "% of reviews",
+        "recommended product",
+        "review evidence",
     ]
     if any(marker in low for marker in fact_markers):
         return True
 
-    # Leaked instruction text from the prompt.
     instruction_markers = [
         "in your own words",
-        "do not copy",
-        "explain why it is a good choice",
-        "recommend the product",
+        "do not",
         "helpful answer",
+        "what customers love",
     ]
     if any(marker in low for marker in instruction_markers):
         return True
 
-    # Simply echoing the question back.
     q = question.strip().lower().rstrip("?.! ")
     if q and low.startswith(q[: min(len(q), 25)]):
         return True
 
-    # A recommendation should not end by asking the customer a question.
     if text.rstrip().endswith("?"):
+        return True
+
+    # A bare comma-separated list of keywords, not a real sentence.
+    if "." not in text and text.count(",") >= 3:
         return True
 
     return False
 
 
-def compose_answer(question, product, category, rating, reviews, summary=None):
-    """
-    Build a real recommendation sentence-by-sentence from the structured data.
-    Used as a fallback when the model output is low quality.
-    """
-
-    sentences = [
-        f"Based on thousands of customer reviews, the {product} is the top "
-        f"choice in {category}."
-    ]
-
-    if reviews >= 1000:
-        sentences.append(
-            f"It holds a strong average rating of {rating:.1f}/5 across "
-            f"{reviews:,} reviews, so it is a well-proven, popular option."
-        )
-    else:
-        sentences.append(
-            f"It earns an average rating of {rating:.1f}/5 from {reviews:,} "
-            f"customer reviews."
-        )
-
-    if summary:
-        highlight = summary.strip().rstrip(".")
-        sentences.append(f"Reviewers highlight that {highlight}.")
-    elif category in CATEGORY_BENEFITS:
-        sentences.append(
-            f"For what you are looking for, {CATEGORY_BENEFITS[category]}."
-        )
-
-    return " ".join(sentences)
-
-
-def finalize_answer(
-    raw_answer,
-    question,
+def compose_answer(
     product,
     category,
     rating,
     reviews,
-    summary=None,
+    loved_themes=None,
+    recommend_rate=None,
+    pct_positive=None,
+    quote=None,
 ):
     """
-    Return the model answer if it is good, otherwise a composed fallback.
+    Build a real recommendation from the structured review evidence.
+    """
+
+    sentences = [
+        f"Based on {reviews:,} customer reviews, the {product} is the top "
+        f"choice in {category}."
+    ]
+
+    if recommend_rate:
+        sentences.append(
+            f"It rates {rating:.1f}/5 and {recommend_rate:.0f}% of reviewers "
+            f"would recommend it."
+        )
+    elif pct_positive:
+        sentences.append(
+            f"It rates {rating:.1f}/5, with {pct_positive:.0f}% of reviews "
+            f"being positive."
+        )
+    else:
+        sentences.append(f"It holds an average rating of {rating:.1f}/5.")
+
+    themes = list(loved_themes or [])[:3]
+    if themes:
+        if len(themes) == 1:
+            joined = themes[0]
+        else:
+            joined = ", ".join(themes[:-1]) + " and " + themes[-1]
+        sentences.append(f"Customers especially like its {joined}.")
+
+    if quote and quote.get("text"):
+        sentences.append(f'One reviewer said: "{quote["text"]}"')
+
+    return " ".join(sentences)
+
+
+def finalize_answer(raw_answer, question, product, evidence):
+    """
+    Return the model answer if it is good, otherwise a composed fallback built
+    from `evidence` (the dict returned by retrieval.get_category_data).
     """
 
     if _is_low_quality(raw_answer, question, product):
         return compose_answer(
-            question, product, category, rating, reviews, summary
+            product=product,
+            category=evidence["category"],
+            rating=evidence["rating"],
+            reviews=evidence["reviews"],
+            loved_themes=evidence.get("loved_themes"),
+            recommend_rate=evidence.get("recommend_rate"),
+            pct_positive=evidence.get("pct_positive"),
+            quote=evidence.get("quote"),
         )
 
     return raw_answer.strip()

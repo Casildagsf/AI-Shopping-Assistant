@@ -1,4 +1,4 @@
-# App dependencies (bump this comment to force a clean rebuild on Streamlit Cloud) — weighted ranking
+# App dependencies (bump this comment to force a clean rebuild on Streamlit Cloud) — evidence pack
 streamlit>=1.36
 
 fastapi==0.139.2

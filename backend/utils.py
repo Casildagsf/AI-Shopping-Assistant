@@ -19,7 +19,43 @@ def clean_product_name(name: str) -> str:
     # Keep only the text before the first dash
     name = name.split(" - ")[0]
 
-    return name.strip()
+    # Drop a trailing ASIN tag like "[B01J2G4VBG]".
+    name = re.sub(r"\[[^\]]*\]", "", name)
+
+    # Evidence-pack names are long marketing titles; cut boilerplate tails.
+    for tail in ("Includes Special Offers", "Special Offers"):
+        idx = name.lower().find(tail.lower())
+        if idx != -1:
+            name = name[:idx]
+
+    name = re.sub(r"\s+", " ", name)
+
+    return name.strip(" ,-")
+
+
+def clean_themes(themes, limit=5):
+    """
+    Tidy a list of one-word review themes: drop duplicates and near-duplicates
+    (e.g. keep "reading", drop "read"), preserving order, up to `limit`.
+    """
+
+    kept = []
+
+    for theme in themes or []:
+        t = str(theme).strip().lower()
+        if not t:
+            continue
+
+        # Skip if it is a stem/plural variant of something we already kept.
+        if any(t == k or k.startswith(t) or t.startswith(k) for k in kept):
+            continue
+
+        kept.append(t)
+
+        if len(kept) >= limit:
+            break
+
+    return kept
 
 
 def clean_review_summary(summary) -> str:

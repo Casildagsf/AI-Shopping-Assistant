@@ -1,106 +1,101 @@
 """
-Functions for loading the processed data.
+Load the evidence pack and retrieve per-category information.
+
+The evidence pack (data/evidence_pack.json) is produced by the Amazon Review
+NLP pipeline. For each category ("cluster") it holds a list of products already
+ranked by a Bayesian (shrunken-mean) score, plus real review evidence: loved /
+complaint themes, sentiment percentages and actual customer quotes.
 """
 
-import numpy as np
-import pandas as pd
+import json
 
-from backend.config import (
-    PRODUCTS_PATH,
-    TOP_PRODUCTS_PATH,
-    LOWEST_PRODUCTS_PATH,
-    SUMMARIES_PATH,
-)
-
-# How much a large review count can lift a product's ranking score. The bonus
-# is REVIEW_WEIGHT * log10(1 + n_reviews), so it rewards well-reviewed products
-# without letting volume override a genuinely higher rating.
-REVIEW_WEIGHT = 0.05
+from backend.config import EVIDENCE_PACK_PATH
 
 
 def load_data():
     """
-    Load all processed datasets used by the shopping assistant.
+    Load the evidence pack and index its clusters by category name.
 
     Returns
     -------
-    tuple
-        products,
-        top_products,
-        lowest_products,
-        summaries
+    dict
+        {category_name: cluster_dict}
     """
 
-    products = pd.read_csv(PRODUCTS_PATH)
+    with open(EVIDENCE_PACK_PATH, encoding="utf-8") as f:
+        pack = json.load(f)
 
-    top_products = pd.read_csv(TOP_PRODUCTS_PATH)
-
-    lowest_products = pd.read_csv(LOWEST_PRODUCTS_PATH)
-
-    summaries = pd.read_csv(SUMMARIES_PATH)
-
-    return (
-        products,
-        top_products,
-        lowest_products,
-        summaries,
-    )
+    return {cluster["cluster_name"]: cluster for cluster in pack["clusters"]}
 
 
-def get_category_data(
-    category,
-    top_products,
-    lowest_products,
-    summaries
-):
+def _best_quote(quotes):
     """
-    Retrieve all information for one category.
+    Pick the most useful positive quote (most 'helpful' votes), if any.
     """
 
-    # Rank by rating plus a confidence bonus for how many reviews back it up:
-    #   score = mean_rating + REVIEW_WEIGHT * log10(1 + n_reviews)
-    # A near-identical rating with far more reviews wins (e.g. 4.59 with 2814
-    # reviews beats 4.60 with 30), while a real rating gap still dominates
-    # (log grows slowly, so the volume bonus stays small).
-    top = top_products.loc[
-        top_products["cluster_name"] == category
-    ].copy()
+    if not quotes:
+        return None
 
-    top["score"] = top["mean_rating"] + REVIEW_WEIGHT * np.log10(
-        1 + top["n_reviews"]
-    )
+    # Prefer a concise, highly rated and helpful quote.
+    def quote_key(q):
+        text_len = len(q.get("text") or "")
+        return (
+            q.get("rating", 0) or 0,
+            q.get("helpful", 0) or 0,
+            -text_len,
+        )
 
-    top = top.sort_values("score", ascending=False)
+    best = max(quotes, key=quote_key)
 
-    if category == "Kindle E-Readers":
-        top = top[
-            ~top["name"].str.contains(
-                "Kindle Fire",
-                case=False,
-                na=False
-            )
-        ]
+    text = (best.get("text") or "").strip()
+    if not text:
+        return None
 
-    best_product = top.iloc[0]
+    return {
+        "text": text,
+        "rating": best.get("rating"),
+        "helpful": best.get("helpful", 0) or 0,
+    }
+
+
+def get_category_data(category, clusters):
+    """
+    Retrieve the recommended product and supporting evidence for one category.
+    Products in the evidence pack are already ranked (rank 1 = best), so we take
+    them in order.
+    """
+
+    cluster = clusters.get(category)
+    if cluster is None:
+        return None
+
+    products = cluster.get("products", [])
+    if not products:
+        return None
+
+    best = products[0]
 
     all_products = [
         {
-            "name": row["name"],
-            "rating": float(row["mean_rating"]),
-            "reviews": int(row["n_reviews"]),
+            "name": p["name"],
+            "rating": float(p["mean_rating"]),
+            "reviews": int(p["n_reviews"]),
+            "pct_positive": p.get("pct_positive"),
         }
-        for _, row in top.iterrows()
+        for p in products
     ]
-
-    summary_rows = summaries.loc[
-        summaries["cluster_name"] == category, "summary"
-    ]
-    raw_summary = summary_rows.iloc[0] if len(summary_rows) else ""
 
     return {
-        "recommended_product": best_product["name"],
-        "rating": best_product["mean_rating"],
-        "reviews": int(best_product["n_reviews"]),
+        "recommended_product": best["name"],
+        "rating": float(best["mean_rating"]),
+        "reviews": int(best["n_reviews"]),
+        "pct_positive": best.get("pct_positive"),
+        "recommend_rate": best.get("recommend_rate"),
+        # Prefer product-level themes, fall back to the category's themes.
+        "loved_themes": best.get("loved_themes") or cluster.get("loved_themes", []),
+        "complaint_themes": (
+            best.get("complaint_themes") or cluster.get("complaint_themes", [])
+        ),
+        "quote": _best_quote(best.get("quotes_positive", [])),
         "all_products": all_products,
-        "summary": raw_summary,
     }
