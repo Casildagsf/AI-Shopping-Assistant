@@ -1,3 +1,14 @@
+---
+title: Amazon AI Shopping Assistant
+emoji: 🛒
+colorFrom: yellow
+colorTo: orange
+sdk: streamlit
+sdk_version: 1.36.0
+app_file: frontend/streamlit_app.py
+pinned: false
+---
+
 # 🛒 Amazon AI Shopping Assistant
 
 An AI-powered shopping assistant that recommends Amazon devices using Machine Learning and Large Language Models.
